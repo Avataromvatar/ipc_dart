@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-export 'package:ipc/src/channel/channel_helper.dart';
+export 'package:ipc/helpers/channel_helper.dart';
 
 abstract class IPCObjectFactory<T> {
   int? get objectLen;

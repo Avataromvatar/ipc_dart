@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
-import 'package:ipc/src/ipc_base.dart';
+
+import 'package:ipc/interface/exception.dart';
 
 class IPCChannelHelper {
   static Future<bool> createIPCChannel(String absolutePath) async {
@@ -15,7 +16,7 @@ class IPCChannelHelper {
         return false;
       }
     } catch (e) {
-      throw IPCException(e);
+      throw IPCException(e.toString());
     }
     return false;
   }
@@ -24,6 +25,7 @@ class IPCChannelHelper {
     try {
       if (Platform.isLinux) {
         File f = File(absolutePath);
+
         if (await f.exists()) {
           await f.delete();
           return true;
@@ -41,6 +43,7 @@ class IPCChannelHelper {
       String path, IPCObjectFactory<T> factory) async {
     assert(factory.fromRaw != null);
     var f = File(path);
+
     if (await f.exists()) {
       final StreamController<T> localStreamController = StreamController();
       bool isRun = true;
@@ -51,6 +54,8 @@ class IPCChannelHelper {
       Future.doWhile(() async {
         //---Worker
         try {
+          var p = await Pipe.create();
+
           //wait data
           data = await f.readAsBytes();
           if (factory.objectLen != null && factory.listFromRaw != null) {

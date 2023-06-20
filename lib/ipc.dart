@@ -3,6 +3,6 @@
 /// More dartdocs go here.
 library;
 
-export 'src/ipc_base.dart';
+export '../src/ipc_base.dart';
 
 // TODO: Export any libraries intended for clients of this package.
