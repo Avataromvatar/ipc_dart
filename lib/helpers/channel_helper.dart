@@ -8,7 +8,7 @@ class IPCChannelHelper {
   static Future<bool> createIPCChannel(String absolutePath) async {
     try {
       if (Platform.isLinux) {
-        await Process.run('mkfifo', [absolutePath]);
+        await Process.run('mkfifo', [absolutePath, 0666.toString()]);
         File f = File(absolutePath);
         if (await f.exists()) {
           return true;
@@ -83,7 +83,7 @@ class IPCChannelHelper {
     }
   }
 
-  static Future<Sink<Uint8List>> openToWriteObjects(String path) async {
+  static Future<Sink<Uint8List>> openToWrite(String path) async {
     var f = File(path);
     if (await f.exists()) {
       final StreamController<Uint8List> localStreamController =

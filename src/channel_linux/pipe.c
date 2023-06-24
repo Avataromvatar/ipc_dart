@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <string.h>
@@ -61,6 +62,7 @@ int _libFlagToSys(int flags)
     {
         ret |= O_NONBLOCK;
     }
+    return ret;
 }
 /// @brief This is inner func what create fifo
 /// @param path 
@@ -84,7 +86,7 @@ ENOTDIR
 EROFS
 (pathname обращается к файловой системе, доступной только для чтения).
 */
-    int err = mkfifo(path, O_RDWR);
+    int err = mkfifo(path, 0666 /*O_RDWR*/);
     if (err == -1)
     {
 
@@ -101,19 +103,38 @@ int _openPipe(char *path, int flags)
 {
     int mode=flags;
     mode &=~O_CREAT;
+    if (access(path, F_OK) == 0 ) {
+    // file exists
+    fprintf(stdout, "File exist Path:%s \n", path);
+} else {
+    // file doesn't exist
+    fprintf(stdout, "File dont exist Path:%s need create:%d \n", path,flags&O_CREAT);
+    if(flags&O_CREAT)
+    {
+           int err =  _createNamedPipe(path);
+           fprintf(stdout, "create  pipe Path:%s Flags:%d result:%d\n", path, flags,err);
+           if(err!= 0)
+           {
+            return -1;
+           }
+    }
+}
     
-    int fd = open(path,mode);
+    int fd = open(path,mode,0666);
+    fprintf(stdout, "open  pipe Path:%s Flags:%d result:%d\n", path, mode,fd);
     if(fd<=0)
     {
-        if(errno == ENOENT && flags&O_CREAT==O_CREAT)
-        {
-           int err =  _createNamedPipe(path);
-           if(err==0)
-           {
-                return _openPipe(path,mode);
-           }
-           return -1;
-        }
+        // if(errno == ENOENT && flags&O_CREAT==O_CREAT)
+        // {
+            
+        //    int err =  _createNamedPipe(path);
+        //    fprintf(stdout, "create  pipe Path:%s Flags:%d result:%d\n", path, mode,err);
+        //    if(err==0)
+        //    {
+        //         return _openPipe(path,mode);
+        //    }
+        //    return -1;
+        // }
         fprintf(stderr, "Error open  pipe Path:%s Flags:%d Error:%d\n", path, flags, errno);
         return -1;
     }
@@ -124,7 +145,14 @@ int _openPipe(char *path, int flags)
 int openNamedPipe(char *path, int flags)
 {
     int sysFlag = _libFlagToSys(flags);
+    fprintf(stdout, "begin open  pipe Path:%s Flags:%d/%d \n", path, flags, sysFlag);
     int fd = _openPipe(path,sysFlag);
+    // if(fd>0)
+    // {
+    //     printf("Можно записать в FIFO сразу %ld байтов\n",
+
+    //   pathconf(path, _PC_PIPE_BUF));
+    // }
     return fd;
 }
 int closePipe(int fd)
@@ -145,7 +173,13 @@ int unlinkPipe(char *path)
     }
     return err;
 }
-int onNonBlock(int fd,char on)
+
+int setNonBlock(int fd)
+{
+    return onNonBlock(fd,1);
+}
+
+int onNonBlock(int fd,int on)
 {
    int flags = fcntl(fd, F_GETFL, 0);
    if (flags == -1) return flags;
@@ -153,7 +187,7 @@ int onNonBlock(int fd,char on)
    return fcntl(fd, F_SETFL, flags);
 }
 
-int __forkStart = 0;
+// int __forkStart = 0;
 
 // void readyToRead(int fd,void (*callback)(int id, int len))
 // {
@@ -162,6 +196,10 @@ int __forkStart = 0;
 int writeToPipe(int fd, char *srcBuffer, int len)
 {
     int count =  write(fd, srcBuffer, len);
+    if(count ==-1)
+    {
+        fprintf(stderr, "Error write to pipe fd:%d len:%d Error:%d\n", fd,len, errno);
+    }
     return count;
 }
 int waitData(int fd,unsigned int waitSec,unsigned int waituSec)
@@ -190,9 +228,23 @@ int waitData(int fd,unsigned int waitSec,unsigned int waituSec)
 int readFromPipe(int fd, char *targetBuffer, unsigned int maxLen)
 {
         int count = read(fd,targetBuffer,maxLen);
+        if(count ==-1)
+        {
+            if(errno == EAGAIN)
+            {return 0;}
+            fprintf(stderr, "Error read from pipe fd:%d lenMax:%d Error:%d\n", fd,maxLen, errno);
+        }
         return count;
 }
 int getLastError()
 {
     return errno;
 }
+ 
+    int getMaxBufferSize(int fd){
+       return fcntl(fd,  F_GETPIPE_SZ);
+    }
+    int setMaxBufferSize(int fd,unsigned int newSize)
+    {
+        return fcntl(fd,  F_SETPIPE_SZ,newSize);
+    }

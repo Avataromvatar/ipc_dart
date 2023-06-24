@@ -12,30 +12,22 @@ DateTime? inPackLast;
 DateTime? outPack;
 DateTime? start;
 DateTime? end;
-IPCPipe ipcIN = IPCPipe();
-IPCPipe ipcOUT = IPCPipe();
+// IPCPipe ipcIN = IPCPipe();
+// IPCPipe ipcOUT = IPCPipe();
 Sink<Uint8List>? sink;
 const startCount = 10000;
 int count = 0;
-int size = 1024;//65536 * 2;
+int size = 1024; //65536 * 2;
 int allData = 0;
 
 // bool isRun = false;
 Future<void> main(List<String> arguments) async {
   print('Hello world IPC!');
   var dirPath = Directory.current.path;
-  var fdIn = await ipcIN.openPipe(
-      OpenFlags.forRead | OpenFlags.createIfNotExist | OpenFlags.nonBlock,
-      path: '$dirPath/$path',
-      maxPipeBuffer: size + 2);
-  if (fdIn < 0) _error(err: 'ipcIN.openPipe');
-  var fdOut = await ipcOUT.openPipe(
-      OpenFlags.forWrite | OpenFlags.createIfNotExist | OpenFlags.nonBlock,
-      path: '$dirPath/$path',
-      maxPipeBuffer: size + 2);
-  if (fdOut < 0) _error(err: 'ipcOUT.openPipe');
+  var fullPath = '$dirPath/$path';
+  IPCChannelHelper.createIPCChannel(fullPath);
 
-  var sIn = await ipcIN.readStream();
+  var sIn = await IPCChannelHelper.opentToRead(fullPath);
   if (sIn != null) {
     sIn.listen((event) {
       allData += event.length;
@@ -46,7 +38,7 @@ Future<void> main(List<String> arguments) async {
       next();
     });
   }
-  sink = await ipcOUT.writeStream();
+  sink = await IPCChannelHelper.openToWrite(fullPath);
   if (sink == null) {
     _error(err: 'open sink');
   }
@@ -57,8 +49,8 @@ Future<void> main(List<String> arguments) async {
   }
   start = DateTime.now();
   next();
-  await Future.delayed(Duration(seconds: 10));
-
+  await Future.delayed(Duration(seconds: 20));
+  end = DateTime.now();
   print(
       'Done after Future $count count, $allData byte, ${(end!.microsecondsSinceEpoch - start!.microsecondsSinceEpoch) / 1000000}');
 }
@@ -71,7 +63,7 @@ void next() {
   } else {
     end = DateTime.now();
     print(
-        'Done $count count, ${allData / 1024}kByte need: ${count * size / 1024} kByte, ${(end!.microsecondsSinceEpoch - start!.microsecondsSinceEpoch) / 1000000}');
+        'Done $count count, $allData / ${count * size} byte, ${(end!.microsecondsSinceEpoch - start!.microsecondsSinceEpoch) / 1000000}');
     exit(0);
   }
 }

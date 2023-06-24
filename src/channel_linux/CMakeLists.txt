@@ -14,6 +14,7 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib/)
 option(ON_MAIN "Включить сборку исполняемого файла для тестирования" OFF)
 
 add_compile_options(
+    -fPIC
     # -Werror
 
     -Wall
@@ -43,8 +44,8 @@ endif()
 # set_property(TARGET netutil PROPERTY
 #              IMPORTED_LOCATION Binary/game_client/libnetutil.a)
 
-set(SOURCE_LIB pipe.cpp)			# Установка переменной со списком исходников для библиотеки
-add_library(pipe STATIC ${SOURCE_LIB})	# Создание статической библиотеки с именем foo
+set(SOURCE_LIB pipe.c)			# Установка переменной со списком исходников для библиотеки
+add_library(pipe SHARED ${SOURCE_LIB})	# Создание статической библиотеки с именем foo
 
 
 if (ON_MAIN)

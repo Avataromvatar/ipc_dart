@@ -21,8 +21,8 @@
     int readFromPipe(int fd, char *targetBuffer, unsigned int maxLen);
     int waitData(int fd,unsigned int waitSec,unsigned int waituSec);
     int getLastError();
-    // int getMaxBufferSize();
-    // int setMaxBufferSize(unsigned int newSize);
+    int getMaxBufferSize(int fd);
+    int setMaxBufferSize(int fd,unsigned int newSize);
 
 
 #endif

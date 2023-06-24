@@ -9,6 +9,9 @@ part of ipc;
 //     int writeToPipe(int fd,char *srcBuffer,int len);
 // int readFromPipe(int fd, char *targetBuffer, unsigned int maxLen);
 //     int waitData(int fd,unsigned int waitSec,unsigned int waituSec);
+//  int getLastError();
+//     int getMaxBufferSize(int fd);
+//     int setMaxBufferSize(int fd,unsigned int newSize);
 
 typedef _libopenNamedPipe = ffi.Int Function(ffi.Pointer<ffi.Char>, ffi.Int);
 typedef _libclosePipe = ffi.Int Function(ffi.Int);
@@ -23,6 +26,9 @@ typedef _libwaitData = ffi.Int Function(
   ffi.Uint32,
   ffi.Uint32,
 );
+typedef _libgetLastError = ffi.Int Function();
+typedef _libgetMaxBufferSize = ffi.Int Function(ffi.Int);
+typedef _libsetMaxBufferSize = ffi.Int Function(ffi.Int, ffi.Uint32);
 
 typedef __openNamedPipe = int Function(ffi.Pointer<ffi.Char>, int);
 typedef __closePipe = int Function(int);
@@ -31,10 +37,13 @@ typedef __setNonBlock = int Function(int);
 typedef __writeToPipe = int Function(int, ffi.Pointer<ffi.Uint8>, int);
 typedef __readFromPipe = int Function(int, ffi.Pointer<ffi.Uint8>, int);
 typedef __waitData = int Function(int, int, int);
+typedef __getLastError = int Function();
+typedef __getMaxBufferSize = int Function(int);
+typedef __setMaxBufferSize = int Function(int, int);
 
 // char *path,int flags
 class _PipeNamed implements IPCPipe {
-  static final libraryPath = '/lib/libpipe.a';
+  static final libraryPath = 'libpipe.so';
   static late final ffi.DynamicLibrary dylib;
   static late final __openNamedPipe _openNamedPipe;
   static late final __closePipe _closePipe;
@@ -43,39 +52,56 @@ class _PipeNamed implements IPCPipe {
   static late final __writeToPipe _writeToPipe;
   static late final __readFromPipe _readFromPipe;
   static late final __waitData _waitData;
-
+  static late final __getLastError _getLastError;
+  static late final __getMaxBufferSize _getMaxBufferSize;
+  static late final __setMaxBufferSize _setMaxBufferSize;
+  static bool _isInit = false;
   bool _isStream = false;
   bool _isRun = false;
   bool _isRead = false;
   bool _isWrite = false;
   int? _fd;
   String? _path;
-  int _maxSize = 65536;
+  int _maxSize = 65536 - 1;
 
   StreamController<Uint8List>? _controller;
 
   _PipeNamed() {
-    dylib = ffi.DynamicLibrary.open(libraryPath);
-    _openNamedPipe = dylib
-        .lookup<ffi.NativeFunction<_libopenNamedPipe>>('openNamedPipe')
-        .asFunction();
-    _closePipe = dylib
-        .lookup<ffi.NativeFunction<_libclosePipe>>('closePipe')
-        .asFunction();
-    _unlinkPipe = dylib
-        .lookup<ffi.NativeFunction<_libunlinkPipe>>('unlinkPipe')
-        .asFunction();
-    _setNonBlock = dylib
-        .lookup<ffi.NativeFunction<_libsetNonBlock>>('setNonBlock')
-        .asFunction();
-    _writeToPipe = dylib
-        .lookup<ffi.NativeFunction<_libwriteToPipe>>('writeToPipe')
-        .asFunction();
-    _readFromPipe = dylib
-        .lookup<ffi.NativeFunction<_libreadFromPipe>>('readFromPipe')
-        .asFunction();
-    _waitData =
-        dylib.lookup<ffi.NativeFunction<_libwaitData>>('waitData').asFunction();
+    if (!_isInit) {
+      print(Directory.current.path);
+      _isInit = true;
+      dylib = ffi.DynamicLibrary.open('${Directory.current.path}/$libraryPath');
+      _openNamedPipe = dylib
+          .lookup<ffi.NativeFunction<_libopenNamedPipe>>('openNamedPipe')
+          .asFunction();
+      _closePipe = dylib
+          .lookup<ffi.NativeFunction<_libclosePipe>>('closePipe')
+          .asFunction();
+      _unlinkPipe = dylib
+          .lookup<ffi.NativeFunction<_libunlinkPipe>>('unlinkPipe')
+          .asFunction();
+      _setNonBlock = dylib
+          .lookup<ffi.NativeFunction<_libsetNonBlock>>('setNonBlock')
+          .asFunction();
+      _writeToPipe = dylib
+          .lookup<ffi.NativeFunction<_libwriteToPipe>>('writeToPipe')
+          .asFunction();
+      _readFromPipe = dylib
+          .lookup<ffi.NativeFunction<_libreadFromPipe>>('readFromPipe')
+          .asFunction();
+      _waitData = dylib
+          .lookup<ffi.NativeFunction<_libwaitData>>('waitData')
+          .asFunction();
+      _getLastError = dylib
+          .lookup<ffi.NativeFunction<_libgetLastError>>('getLastError')
+          .asFunction();
+      _getMaxBufferSize = dylib
+          .lookup<ffi.NativeFunction<_libgetMaxBufferSize>>('getMaxBufferSize')
+          .asFunction();
+      _setMaxBufferSize = dylib
+          .lookup<ffi.NativeFunction<_libsetMaxBufferSize>>('setMaxBufferSize')
+          .asFunction();
+    }
   }
 
   @override
@@ -116,8 +142,10 @@ class _PipeNamed implements IPCPipe {
     if (path == null) {
       throw IPCException('Error openPipe: Named Pipe must have a path');
     }
+    _path = path;
     // ffi.Pointer<ffi.Char> p = ffi.calloc //ffi.Pointer<ffi.Char>
-    var ret = _openNamedPipe(path.toNativeUtf8().cast<ffi.Char>(), flags);
+    var ret = _openNamedPipe(
+        path.toNativeUtf8().cast<ffi.Char>(), flags | OpenFlags.nonBlock);
     if (ret < 0) {
       throw IPCException('OpenPipe $path error: ${ret * -1}');
     }
@@ -130,7 +158,10 @@ class _PipeNamed implements IPCPipe {
       _closePipe(ret);
       return 0;
     }
+    _maxSize = maxPipeBuffer;
+
     _fd = ret;
+    _setMaxBufferSize(_fd!, _maxSize);
     return 0;
   }
 
@@ -155,6 +186,9 @@ class _PipeNamed implements IPCPipe {
         int ret = 0;
         IPCException? error;
         _controller = StreamController<Uint8List>.broadcast();
+        _controller!.onCancel = () {
+          _isRun = false;
+        };
         Future.doWhile(() async {
           ret = _readFromPipe(_fd!, p, _maxSize);
           if (ret == 0) {
@@ -165,8 +199,8 @@ class _PipeNamed implements IPCPipe {
           } else {
             //error
             // error = IPCException('Error readStream: $ret');
-            log('Error readStream: $ret');
-            _isRun = false;
+            log('Error readStream fd:$_fd path:$_path $ret ');
+            // _isRun = false;
           }
           if (!_isRun) {
             calloc.free(p);
@@ -199,19 +233,22 @@ class _PipeNamed implements IPCPipe {
         _controller!.stream.listen((event) {
           if (_fd != null) {
             var p = calloc.call<ffi.Uint8>(event.length);
-            p.asTypedList(_maxSize).setAll(0, event);
-            int i = event.length;
+            p.asTypedList(event.length).setAll(0, event);
+            int need = event.length;
+            int pos = 0;
+            while (need > 0) {
+              ret = _writeToPipe(_fd!, p.elementAt(pos),
+                  event.length > _maxSize ? _maxSize : event.length);
 
-            while (i > 0) {
-              ret = _writeToPipe(_fd!, p, event.length);
               if (ret < 0) {
                 //error
 
                 _isRun = false;
-                i = -1;
+                need = -1;
                 log('Error writeStream $_fd $ret');
               } else {
-                i -= ret;
+                need -= ret;
+                pos += ret;
               }
             }
 
