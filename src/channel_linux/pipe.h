@@ -18,9 +18,11 @@
     int setNonBlock(int fd);
     // void readyToRead(int fd,void (*callback)(int id,int len));
     int writeToPipe(int fd,char *srcBuffer,int len);
-    int readFromPipe(int fd, char *targetBuffer, unsigned int maxLen, char needWait=0,unsigned int waitSec=5,unsigned int waituSec=0);
+    int readFromPipe(int fd, char *targetBuffer, unsigned int maxLen);
+    int waitData(int fd,unsigned int waitSec,unsigned int waituSec);
     int getLastError();
-
+    // int getMaxBufferSize();
+    // int setMaxBufferSize(unsigned int newSize);
 
 
 #endif

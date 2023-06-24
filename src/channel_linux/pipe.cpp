@@ -164,13 +164,9 @@ int writeToPipe(int fd, char *srcBuffer, int len)
     int count =  write(fd, srcBuffer, len);
     return count;
 }
-int readFromPipe(int fd, char *targetBuffer, unsigned int maxLen, char needWait=0,unsigned int waitSec=5,unsigned int waituSec=0)
+int waitData(int fd,unsigned int waitSec,unsigned int waituSec)
 {
-    if(needWait)
-    {
-        int count = read(fd,targetBuffer,maxLen);
-        if(count==0)
-        {
+  
             fd_set rfds;
         struct timeval tv;
         int retval;
@@ -184,18 +180,17 @@ int readFromPipe(int fd, char *targetBuffer, unsigned int maxLen, char needWait=
         {
             //  printf("Данные доступны.\n");
             /* Теперь FD_ISSET(0, &rfds) вернет истинное значение. */
-            count = read(fd,targetBuffer,maxLen);
-            return count;
-        }
-         
+            // count = read(fd,targetBuffer,maxLen);
+            return 1;
         }
         return -1;
-    }
-    else
-    {
-        int count = read(fd,targetBuffer,maxLen);
-    }
+}
 
+    
+int readFromPipe(int fd, char *targetBuffer, unsigned int maxLen)
+{
+        int count = read(fd,targetBuffer,maxLen);
+        return count;
 }
 int getLastError()
 {

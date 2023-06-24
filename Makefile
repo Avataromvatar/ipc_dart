@@ -142,29 +142,29 @@ pipe_main/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipe_main.dir/build.make CMakeFiles/pipe_main.dir/build
 .PHONY : pipe_main/fast
 
-pipe.o: pipe.c.o
+pipe.o: pipe.cpp.o
 .PHONY : pipe.o
 
 # target to build an object file
-pipe.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipe.dir/build.make CMakeFiles/pipe.dir/pipe.c.o
-.PHONY : pipe.c.o
+pipe.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipe.dir/build.make CMakeFiles/pipe.dir/pipe.cpp.o
+.PHONY : pipe.cpp.o
 
-pipe.i: pipe.c.i
+pipe.i: pipe.cpp.i
 .PHONY : pipe.i
 
 # target to preprocess a source file
-pipe.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipe.dir/build.make CMakeFiles/pipe.dir/pipe.c.i
-.PHONY : pipe.c.i
+pipe.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipe.dir/build.make CMakeFiles/pipe.dir/pipe.cpp.i
+.PHONY : pipe.cpp.i
 
-pipe.s: pipe.c.s
+pipe.s: pipe.cpp.s
 .PHONY : pipe.s
 
 # target to generate assembly for a file
-pipe.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipe.dir/build.make CMakeFiles/pipe.dir/pipe.c.s
-.PHONY : pipe.c.s
+pipe.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pipe.dir/build.make CMakeFiles/pipe.dir/pipe.cpp.s
+.PHONY : pipe.cpp.s
 
 pipe_main.o: pipe_main.c.o
 .PHONY : pipe_main.o
